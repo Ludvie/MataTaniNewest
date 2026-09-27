@@ -166,17 +166,26 @@ export const UploadSection: React.FC<UploadSectionProps> = ({ onAnalyze, isLoadi
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleSelectPreset = (sample: PresetSample) => {
+  const handleSelectPreset = async (sample: PresetSample) => {
     setSelectedCrop(sample.crop);
     setPreviewUrl(sample.imageUrl);
     setSelectedFile(null);
-    setCompressedBlob(null);
     setCompressionStats({
       origKb: 84,
       compKb: 38,
       percentSaved: 55,
     });
     setErrorMessage(null);
+
+    try {
+      const res = await fetch(sample.imageUrl);
+      if (res.ok) {
+        const blob = await res.blob();
+        setCompressedBlob(blob);
+      }
+    } catch (err) {
+      console.warn('Preset blob load notice:', err);
+    }
   };
 
   const handleSubmit = () => {

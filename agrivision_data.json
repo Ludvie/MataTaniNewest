@@ -1,6 +1,94 @@
 {
   "analyses": [
     {
+      "id": 12,
+      "image_hash": "addf509e88b829c79b583144690422650d90673902e59faaa4d6a1616e7a7392",
+      "image_path": "/uploads/1790521589357_6970a2f1.jpeg",
+      "jenis_tanaman": "Tomat",
+      "jenis_objek": "daun",
+      "diagnosis": "Serangan Busuk Daun Basah (Phytophthora infestans) dengan lesi coklat kehitaman berbatas hijau pucat pada helai daun.",
+      "tingkat_keparahan": "Berat",
+      "rekomendasi_air_ml": 220,
+      "rekomendasi_pupuk": {
+        "jenis": "Fungisida Dimetomorf / Simoksanil + Pupuk Kalium Fosfit",
+        "takaran_gram": 15
+      },
+      "rekomendasi_pupuk_jenis": "Fungisida Dimetomorf / Simoksanil + Pupuk Kalium Fosfit",
+      "rekomendasi_pupuk_gram": 15,
+      "catatan_tambahan": "Segera lakukan isolasi bedengan. Kondisi cuaca lembap bersuhu sejuk sangat mempercepat ledakan spora Phytophthora.",
+      "tingkat_keyakinan": 94,
+      "latitude": null,
+      "longitude": null,
+      "created_at": "2026-09-27 15:06:29",
+      "is_cached": false
+    },
+    {
+      "id": 11,
+      "image_hash": "2e42d3ab37693ab53dfc45e428a92ea17131f4097c1ba1967a3f5a94eafc83fb",
+      "image_path": "/uploads/1790521521827_2ea5a6a7.jpeg",
+      "jenis_tanaman": "Cabai",
+      "jenis_objek": "daun",
+      "diagnosis": "Gejala Virus Kuning Gemini (Pepper Yellow Leaf Curl Virus) berupa daun mengecil, tepi menggulung ke atas, dan klorosis urat daun.",
+      "tingkat_keparahan": "Sedang",
+      "rekomendasi_air_ml": 250,
+      "rekomendasi_pupuk": {
+        "jenis": "Insektisida Nabati Ekstrak Mimba (vektor kutu kebul) + Kalsium Boron",
+        "takaran_gram": 12
+      },
+      "rekomendasi_pupuk_jenis": "Insektisida Nabati Ekstrak Mimba (vektor kutu kebul) + Kalsium Boron",
+      "rekomendasi_pupuk_gram": 12,
+      "catatan_tambahan": "Kendalikan kutu kebul (Bemisia tabaci) sebagai vektor utama virus menggunakan perangkap kuning berperekat di sekeliling bedengan.",
+      "tingkat_keyakinan": 89,
+      "latitude": null,
+      "longitude": null,
+      "created_at": "2026-09-27 15:05:23",
+      "is_cached": false
+    },
+    {
+      "id": 10,
+      "image_hash": "9f631131d124ee342b52df3f6484d4e8a54d097cf8c2401a6b77b7e9d5689351",
+      "image_path": "/uploads/1790521465702_d725886d.jpeg",
+      "jenis_tanaman": "Cabai",
+      "jenis_objek": "daun",
+      "diagnosis": "Tanaman cabai dalam fase generatif (pembentukan buah dan bunga) secara umum tumbuh subur dan sehat dengan indikasi serangan hama pengunyah/gejala bercak daun sangat ringan.",
+      "tingkat_keparahan": "Ringan",
+      "rekomendasi_air_ml": 450,
+      "rekomendasi_pupuk": {
+        "jenis": "NPK Generatif (KNO3 Putih / MKP)",
+        "takaran_gram": 5
+      },
+      "rekomendasi_pupuk_jenis": "NPK Generatif (KNO3 Putih / MKP)",
+      "rekomendasi_pupuk_gram": 5,
+      "catatan_tambahan": "Segera panen buah cabai yang sudah berwarna merah sempurna untuk merangsang pembungaan baru. Pertahankan penyiraman secara teratur agar kelembapan media tanam stabil dan mencegah gugur bunga/buah.",
+      "tingkat_keyakinan": 95,
+      "latitude": null,
+      "longitude": null,
+      "created_at": "2026-09-27 15:04:34",
+      "is_cached": false
+    },
+    {
+      "id": 9,
+      "image_hash": "306081e3ad5b5cde472418b11ee3f3fbd202800bbb2b87164d986de23c96e2df",
+      "image_path": "/uploads/1790520082210_b11c944a.jpeg",
+      "jenis_tanaman": "Umum / Otomatis Deteksi",
+      "jenis_objek": "daun",
+      "diagnosis": "Gambar tidak berisi objek daun atau tanah pertanian, melainkan gambar grafis logo 'INFORMATIKA UNIB'.",
+      "tingkat_keparahan": "Ringan",
+      "rekomendasi_air_ml": 250,
+      "rekomendasi_pupuk": {
+        "jenis": "Tidak ada",
+        "takaran_gram": 15
+      },
+      "rekomendasi_pupuk_jenis": "Tidak ada",
+      "rekomendasi_pupuk_gram": 15,
+      "catatan_tambahan": "Silakan unggah foto daun atau tanah pertanian yang jelas untuk mendapatkan analisis agronomi yang akurat.",
+      "tingkat_keyakinan": 85,
+      "latitude": -3.800378497109895,
+      "longitude": 102.27229653342923,
+      "created_at": "2026-09-27 14:41:28",
+      "is_cached": false
+    },
+    {
       "id": 8,
       "image_hash": "a8089145e390e3485cf2394be4bdf451186c1bcdc8b7f31caddfabef88201c0d",
       "image_path": "/uploads/1789452449682_e6d2f54f.jpeg",

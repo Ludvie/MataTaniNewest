@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Header, AppTab } from './components/Header';
+import { SplashScreen } from './components/SplashScreen';
 import { UploadSection } from './components/UploadSection';
 import { ResultPanel } from './components/ResultPanel';
 import { FeaturesSection } from './components/FeaturesSection';
@@ -12,6 +13,7 @@ import { AnalysisRecord } from './types';
 import { CheckCircle, AlertCircle, RefreshCw, Sprout } from 'lucide-react';
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<AppTab>('diagnosis');
   const [historyItems, setHistoryItems] = useState<AnalysisRecord[]>([]);
   const [currentAnalysis, setCurrentAnalysis] = useState<AnalysisRecord | null>(null);
@@ -139,11 +141,20 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#FCFDFD] text-slate-800 flex flex-col font-sans selection:bg-emerald-100 selection:text-[#143823]">
+      {/* 0. Animasi Splash Pembuka Awal Web */}
+      {showSplash && (
+        <SplashScreen
+          onComplete={() => setShowSplash(false)}
+          minDuration={2500}
+        />
+      )}
+
       {/* 1. Bagian Navigasi (Navbar) */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         historyCount={historyItems.length}
+        onReplaySplash={() => setShowSplash(true)}
       />
 
       {/* Global Notification Toast */}
@@ -310,6 +321,15 @@ export default function App() {
               <p className="text-xs text-emerald-200/60">
                 &copy; 2026 MataTani. Ketahanan Pangan &amp; Pertanian Berkelanjutan.
               </p>
+              <button
+                onClick={() => {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  setShowSplash(true);
+                }}
+                className="text-xs text-emerald-300 hover:text-white underline underline-offset-4 cursor-pointer transition-colors pt-1"
+              >
+                Putar Animasi Splash Pembuka
+              </button>
             </div>
           </div>
         </div>

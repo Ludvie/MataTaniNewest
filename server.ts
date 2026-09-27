@@ -438,118 +438,146 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'Agri-Vision Backend' });
 });
 
-// 2. POST /api/analyze — Main analysis endpoint
-app.post('/api/analyze', upload.single('image') as any, async (req: any, res: any) => {
-  try {
-    let imageBuffer: Buffer | null = null;
-    let mimeType = 'image/jpeg';
-    let originalName = 'upload.jpg';
-
-    if (req.file) {
-      imageBuffer = req.file.buffer;
-      mimeType = req.file.mimetype || 'image/jpeg';
-      originalName = req.file.originalname || 'upload.jpg';
-    } else if (req.body.image) {
-      // Base64 string payload fallback
-      const base64Str = req.body.image;
-      const match = base64Str.match(/^data:(image\/[a-zA-Z0-9+]+);base64,(.+)$/);
-      if (match) {
-        mimeType = match[1];
-        imageBuffer = Buffer.from(match[2], 'base64');
-      } else {
-        imageBuffer = Buffer.from(base64Str, 'base64');
-      }
-    }
-
-    if (!imageBuffer || imageBuffer.length === 0) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'File gambar diperlukan pada request.',
-      });
-    }
-
-    // Validasi ukuran
-    if (imageBuffer.length > 10 * 1024 * 1024) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Ukuran file melebihi batas maksimum 10MB.',
-      });
-    }
-
-    const jenisTanaman = (req.body.jenis_tanaman || '').trim() || null;
-    const latitude = req.body.latitude ? parseFloat(req.body.latitude) : null;
-    const longitude = req.body.longitude ? parseFloat(req.body.longitude) : null;
-
-    // Hitung Hash SHA-256 untuk Caching
-    const imageHash = crypto.createHash('sha256').update(imageBuffer).digest('hex');
-
-    const store = loadData();
-
-    // Pengecekan Cache
-    const cachedItem = store.analyses.find((a) => a.image_hash === imageHash);
-    if (cachedItem) {
-      return res.json({
-        status: 'success',
-        message: 'Hasil diagnosis diambil dari cache (gambar identik terdeteksi).',
-        data: {
-          ...cachedItem,
-          is_cached: true,
-        },
-      });
-    }
-
-    // Simpan gambar ke disk
-    const ext = mimeType.split('/')[1] || 'jpg';
-    const filename = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}.${ext}`;
-    const savedPath = path.join(uploadsDir, filename);
-    fs.writeFileSync(savedPath, imageBuffer);
-    const publicImageUrl = `/uploads/${filename}`;
-
-    // Panggil Gemini Vision API dengan multi-model cascade
-    const apiKey = process.env.GEMINI_API_KEY;
-    let aiOutput: any = null;
-
-    if (apiKey) {
-      const candidateModels = ['gemini-2.5-flash', 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-2.0-flash'];
-      const promptText = SYSTEM_PROMPT_TEMPLATE(jenisTanaman || 'Umum / Belum Ditentukan');
-      const base64Data = imageBuffer.toString('base64');
-      const ai = new GoogleGenAI({ apiKey });
-
-      for (const modelName of candidateModels) {
-        try {
-          const geminiRes = await ai.models.generateContent({
-            model: modelName,
-            contents: [
-              {
-                role: 'user',
-                parts: [
-                  { text: promptText },
-                  {
-                    inlineData: {
-                      mimeType: mimeType,
-                      data: base64Data,
-                    },
-                  },
-                ],
-              },
-            ],
-            config: {
-              temperature: 0.2,
-              responseMimeType: 'application/json',
-            },
+// 2. POST /api/analyze — Main analysis endpoint with robust Multer error handling
+app.post(
+  '/api/analyze',
+  (req: any, res: any, next: any) => {
+    upload.single('image')(req, res, (err: any) => {
+      if (err) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Ukuran file gambar melebihi batas maksimum 10MB. Harap gunakan foto dengan resolusi lebih kecil atau terkompresi.',
           });
+        }
+        return res.status(400).json({
+          status: 'error',
+          message: err.message || 'Gagal memproses unggahan berkas gambar.',
+        });
+      }
+      next();
+    });
+  },
+  async (req: any, res: any) => {
+    try {
+      let imageBuffer: Buffer | null = null;
+      let mimeType = 'image/jpeg';
+      let originalName = 'upload.jpg';
 
-          const responseText = geminiRes.text;
-          if (responseText && responseText.trim()) {
-            aiOutput = cleanAndParseJSON(responseText);
-            console.log(`[Agri-Vision] Sukses menganalisis dengan model: ${modelName}`);
-            break;
+      if (req.file) {
+        imageBuffer = req.file.buffer;
+        mimeType = req.file.mimetype || 'image/jpeg';
+        originalName = req.file.originalname || 'upload.jpg';
+      } else if (req.body.image) {
+        // Base64 string payload or local asset path fallback
+        const base64Str = String(req.body.image).trim();
+        const match = base64Str.match(/^data:(image\/[a-zA-Z0-9+]+);base64,(.+)$/);
+        if (match) {
+          mimeType = match[1];
+          imageBuffer = Buffer.from(match[2], 'base64');
+        } else if (base64Str.startsWith('/') || base64Str.startsWith('src/') || base64Str.startsWith('public/')) {
+          const relativeClean = base64Str.startsWith('/') ? base64Str.slice(1) : base64Str;
+          const localPath = path.join(process.cwd(), relativeClean);
+          if (fs.existsSync(localPath)) {
+            imageBuffer = fs.readFileSync(localPath);
+            mimeType = localPath.endsWith('.png') ? 'image/png' : 'image/jpeg';
+          } else {
+            imageBuffer = Buffer.from(base64Str, 'base64');
           }
-        } catch (modelErr: any) {
-          console.warn(`[Agri-Vision] Model ${modelName} gagal:`, modelErr.status || modelErr.message);
+        } else {
+          imageBuffer = Buffer.from(base64Str, 'base64');
         }
       }
-    }
+
+      if (!imageBuffer || imageBuffer.length === 0) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'File gambar diperlukan pada request.',
+        });
+      }
+
+      // Validasi ukuran
+      if (imageBuffer.length > 10 * 1024 * 1024) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Ukuran file melebihi batas maksimum 10MB.',
+        });
+      }
+
+      const jenisTanaman = (req.body.jenis_tanaman || '').trim() || null;
+      const latitude = req.body.latitude ? parseFloat(req.body.latitude) : null;
+      const longitude = req.body.longitude ? parseFloat(req.body.longitude) : null;
+
+      // Hitung Hash SHA-256 untuk Caching
+      const imageHash = crypto.createHash('sha256').update(imageBuffer).digest('hex');
+
+      const store = loadData();
+
+      // Pengecekan Cache
+      const cachedItem = store.analyses.find((a) => a.image_hash === imageHash);
+      if (cachedItem) {
+        return res.json({
+          status: 'success',
+          message: 'Hasil diagnosis diambil dari cache (gambar identik terdeteksi).',
+          data: {
+            ...cachedItem,
+            is_cached: true,
+          },
+        });
+      }
+
+      // Simpan gambar ke disk
+      const ext = mimeType.split('/')[1] || 'jpg';
+      const filename = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}.${ext}`;
+      const savedPath = path.join(uploadsDir, filename);
+      fs.writeFileSync(savedPath, imageBuffer);
+      const publicImageUrl = `/uploads/${filename}`;
+
+      // Panggil Gemini Vision API dengan model resmi
+      const apiKey = process.env.GEMINI_API_KEY;
+      let aiOutput: any = null;
+
+      if (apiKey) {
+        const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+        const promptText = SYSTEM_PROMPT_TEMPLATE(jenisTanaman || 'Umum / Belum Ditentukan');
+        const base64Data = imageBuffer.toString('base64');
+        const ai = new GoogleGenAI({ apiKey });
+
+        for (const modelName of candidateModels) {
+          try {
+            const geminiRes = await ai.models.generateContent({
+              model: modelName,
+              contents: [
+                {
+                  role: 'user',
+                  parts: [
+                    { text: promptText },
+                    {
+                      inlineData: {
+                        mimeType: mimeType,
+                        data: base64Data,
+                      },
+                    },
+                  ],
+                },
+              ],
+              config: {
+                temperature: 0.2,
+                responseMimeType: 'application/json',
+              },
+            });
+
+            const responseText = geminiRes.text;
+            if (responseText && responseText.trim()) {
+              aiOutput = cleanAndParseJSON(responseText);
+              console.log(`[Agri-Vision] Sukses menganalisis dengan model: ${modelName}`);
+              break;
+            }
+          } catch (modelErr: any) {
+            console.warn(`[Agri-Vision] Model ${modelName} gagal:`, modelErr.status || modelErr.message);
+          }
+        }
+      }
 
     // Jika pemanggilan API Gemini gagal / kuota habis / 503, gunakan Intelligent Agronomic Domain Engine
     if (!aiOutput) {

@@ -10,6 +10,7 @@ import {
   Home,
   Sparkles,
   ArrowRight,
+  PlayCircle,
 } from 'lucide-react';
 
 export type AppTab = 'diagnosis' | 'history' | 'encyclopedia' | 'calculator' | 'weather';
@@ -18,12 +19,14 @@ interface HeaderProps {
   activeTab: AppTab;
   setActiveTab: (tab: AppTab) => void;
   historyCount: number;
+  onReplaySplash?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   historyCount,
+  onReplaySplash,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -116,7 +119,18 @@ export const Header: React.FC<HeaderProps> = ({
           </nav>
 
           {/* CTA Button Desktop */}
-          <div className="hidden lg:flex items-center gap-3 shrink-0 ml-4">
+          <div className="hidden lg:flex items-center gap-2 xl:gap-3 shrink-0 ml-4">
+            {onReplaySplash && (
+              <button
+                onClick={onReplaySplash}
+                title="Tampilkan Animasi Splash Pembuka"
+                aria-label="Tampilkan Animasi Splash"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-emerald-800 hover:bg-emerald-50 transition-all cursor-pointer border border-transparent hover:border-emerald-200/60"
+              >
+                <PlayCircle className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="hidden xl:inline">Animasi Splash</span>
+              </button>
+            )}
             <button
               onClick={scrollToUpload}
               className="flex items-center gap-2 py-2 px-4 rounded-full font-bold text-xs sm:text-sm text-white bg-[#143823] hover:bg-[#0B2215] shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer whitespace-nowrap"
@@ -171,14 +185,26 @@ export const Header: React.FC<HeaderProps> = ({
               );
             })}
 
-            <div className="pt-3 pb-1 border-t border-slate-100 mt-2">
+            <div className="pt-3 pb-1 border-t border-slate-100 mt-2 space-y-2">
+              {onReplaySplash && (
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onReplaySplash();
+                  }}
+                  className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl font-medium text-xs text-slate-700 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-900 border border-slate-200/80 cursor-pointer transition-colors"
+                >
+                  <PlayCircle className="w-4 h-4 text-emerald-600" />
+                  <span>Putar Ulang Animasi Splash</span>
+                </button>
+              )}
               <button
                 onClick={scrollToUpload}
                 className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl font-bold text-sm text-white bg-[#143823] hover:bg-[#0B2215] shadow-md cursor-pointer transition-colors"
               >
                 <Sparkles className="w-4 h-4 text-emerald-300" />
                 <span>Mulai Diagnosis AI</span>
-                <ArrowRight className="w-4 h-4 text-emerald-300" />
+                <ArrowRight className="w-3.5 h-3.5 text-emerald-300" />
               </button>
             </div>
           </div>
