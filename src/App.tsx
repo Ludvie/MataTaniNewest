@@ -85,8 +85,9 @@ export default function App() {
     setNotification(null);
 
     try {
-      // Siapkan payload Base64 (paling stabil & kompatibel 100% dengan Vercel Serverless Function)
+      // Siapkan payload Base64 (paling stabil & kompatibel 100% dengan Vercel Serverless Function & AI Studio)
       let imageBase64: string = '';
+
       if (typeof payload.blobOrBase64 === 'string' && payload.blobOrBase64.startsWith('data:')) {
         imageBase64 = payload.blobOrBase64;
       } else if (payload.previewUrl && payload.previewUrl.startsWith('data:')) {
@@ -98,6 +99,27 @@ export default function App() {
           reader.onerror = reject;
           reader.readAsDataURL(payload.blobOrBase64 as Blob);
         });
+      }
+
+      // Jika belum berformat Base64 (misalnya berupa URL relatif lokal /assets/...), fetch dan ubah ke Base64
+      if (!imageBase64) {
+        const targetUrl = (typeof payload.blobOrBase64 === 'string' && payload.blobOrBase64) || payload.previewUrl;
+        if (targetUrl) {
+          try {
+            const fetchRes = await fetch(targetUrl);
+            if (fetchRes.ok) {
+              const fetchedBlob = await fetchRes.blob();
+              imageBase64 = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(fetchedBlob);
+              });
+            }
+          } catch (fetchErr) {
+            console.warn('Gagal memuat URL ke Base64:', fetchErr);
+          }
+        }
       }
 
       let response: Response;
@@ -138,10 +160,13 @@ export default function App() {
       } catch (parseErr) {
         console.error('Non-JSON server response:', responseText);
         if (response.status === 504) {
-          throw new Error('Waktu tunggu server Vercel habis (504 Timeout). Silakan gunakan foto yang lebih terkompresi atau coba lagi.');
+          throw new Error('Waktu tunggu pemrosesan habis (504 Gateway Timeout). Harap coba lagi dengan foto yang lebih fokus.');
+        }
+        if (response.status === 404) {
+          throw new Error('Rute endpoint analisis /api/analyze belum aktif di server. Pastikan fungsi serverless telah dideploy.');
         }
         if (response.status >= 500) {
-          throw new Error(`Server Vercel belum siap atau mengalami kendala (${response.status}). Silakan coba beberapa detik lagi.`);
+          throw new Error(`Server mengalami kendala (${response.status}): ${responseText.slice(0, 100) || 'Internal Error'}`);
         }
         throw new Error(`Gagal memproses respon server: ${responseText.slice(0, 80)}`);
       }

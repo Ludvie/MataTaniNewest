@@ -1224,11 +1224,7 @@ app.get('/api/weather', async (req, res) => {
 
 async function startServer() {
   const isCjsBundle = typeof __filename !== 'undefined' && __filename.endsWith('.cjs');
-  const isDevCommand = process.env.npm_lifecycle_event === 'dev';
-  const hasDist = fs.existsSync(path.join(process.cwd(), 'dist', 'index.html')) ||
-                  (typeof __dirname !== 'undefined' && fs.existsSync(path.join(__dirname, 'index.html')));
-
-  const isProduction = process.env.NODE_ENV === 'production' || isCjsBundle || (hasDist && !isDevCommand);
+  const isProduction = process.env.NODE_ENV === 'production' || isCjsBundle;
 
   if (!isProduction) {
     const { createServer: createViteServer } = await import('vite');
