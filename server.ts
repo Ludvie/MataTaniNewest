@@ -4,7 +4,6 @@ import fs from 'fs';
 import crypto from 'crypto';
 import multer from 'multer';
 import dotenv from 'dotenv';
-import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 
 dotenv.config();
@@ -35,7 +34,7 @@ app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 app.use((req, _res, next) => {
   // Jika Vercel me-rewrite /api/xxx ke serverless function tanpa prefix /api
   if (!req.url.startsWith('/api') && !req.url.startsWith('/uploads') && !req.url.startsWith('/assets') && !req.url.startsWith('/@')) {
-    const knownApiPaths = ['predict', 'history', 'weather', 'feedback', 'export', 'health'];
+    const knownApiPaths = ['analyze', 'predict', 'history', 'weather', 'feedback', 'export', 'health'];
     if (knownApiPaths.some(p => req.url.includes(p))) {
       req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
     }
@@ -462,9 +461,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'Agri-Vision Backend' });
 });
 
-// 2. POST /api/analyze — Main analysis endpoint with robust Multer error handling
+// 2. POST /api/analyze & /api/predict — Main analysis endpoint with robust Multer error handling
 app.post(
-  '/api/analyze',
+  ['/api/analyze', '/api/predict'],
   (req: any, res: any, next: any) => {
     upload.single('image')(req, res, (err: any) => {
       if (err) {
@@ -575,7 +574,7 @@ app.post(
 
         for (const modelName of candidateModels) {
           try {
-            const geminiRes = await ai.models.generateContent({
+            const generatePromise = ai.models.generateContent({
               model: modelName,
               contents: [
                 {
@@ -597,14 +596,20 @@ app.post(
               },
             });
 
-            const responseText = geminiRes.text;
+            // Guard 8.5 detik agar Vercel Serverless Function tidak terkena timeout 504 / server error
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error(`Timeout model ${modelName} 8500ms`)), 8500)
+            );
+
+            const geminiRes: any = await Promise.race([generatePromise, timeoutPromise]);
+            const responseText = geminiRes?.text;
             if (responseText && responseText.trim()) {
               aiOutput = cleanAndParseJSON(responseText);
               console.log(`[Agri-Vision] Sukses menganalisis dengan model: ${modelName}`);
               break;
             }
           } catch (modelErr: any) {
-            console.warn(`[Agri-Vision] Model ${modelName} gagal:`, modelErr.status || modelErr.message);
+            console.warn(`[Agri-Vision] Model ${modelName} gagal / timeout:`, modelErr.status || modelErr.message);
           }
         }
       }
@@ -1221,6 +1226,7 @@ async function startServer() {
   const isProduction = process.env.NODE_ENV === 'production' || isCjsBundle || (hasDist && !isDevCommand);
 
   if (!isProduction) {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -1251,6 +1257,17 @@ async function startServer() {
     console.log(`🌾 Agri-Vision Server listening on http://0.0.0.0:${PORT} [mode: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}]`);
   });
 }
+
+// Global Error Handler untuk memastikan Express selalu mengembalikan JSON (bukan plain-text / HTML)
+app.use((err: any, _req: any, res: any, _next: any) => {
+  console.error('[Agri-Vision Express Error]:', err);
+  if (!res.headersSent) {
+    res.status(err.status || 500).json({
+      status: 'error',
+      message: err.message || 'Terjadi kesalahan pada pemrosesan server.',
+    });
+  }
+});
 
 // Hanya jalankan listener mandiri di lingkungan non-serverless (Local dev / Container / AI Studio)
 if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {

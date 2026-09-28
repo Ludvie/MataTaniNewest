@@ -1,6 +1,28 @@
 {
   "analyses": [
     {
+      "id": 13,
+      "image_hash": "1b476993c10cf0b3f6e4fdaa205a40c4b070cbd87a40d45dc68420eb8a53c058",
+      "image_path": "/uploads/1790634308317_a6ff6972.jpeg",
+      "jenis_tanaman": "Padi",
+      "jenis_objek": "daun",
+      "diagnosis": "Bercak Daun Coklat (Bipolaris oryzae) terindikasi akibat defisiensi Kalium dan Silika pada lahan kekurangan hara mikro.",
+      "tingkat_keparahan": "Ringan",
+      "rekomendasi_air_ml": 300,
+      "rekomendasi_pupuk": {
+        "jenis": "Kalium Klorida (KCl) + Pupuk Daun Mikro Zn/Fe",
+        "takaran_gram": 18
+      },
+      "rekomendasi_pupuk_jenis": "Kalium Klorida (KCl) + Pupuk Daun Mikro Zn/Fe",
+      "rekomendasi_pupuk_gram": 18,
+      "catatan_tambahan": "Tingkatkan kecukupan kalium untuk memperkokoh batang dan ketahanan daun terhadap spora jamur oportunistik.",
+      "tingkat_keyakinan": 85,
+      "latitude": null,
+      "longitude": null,
+      "created_at": "2026-09-28 22:25:08",
+      "is_cached": false
+    },
+    {
       "id": 12,
       "image_hash": "addf509e88b829c79b583144690422650d90673902e59faaa4d6a1616e7a7392",
       "image_path": "/uploads/1790521589357_6970a2f1.jpeg",

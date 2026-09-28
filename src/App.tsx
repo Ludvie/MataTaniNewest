@@ -107,10 +107,23 @@ export default function App() {
         body: formData,
       });
 
-      const result = await response.json();
+      const responseText = await response.text();
+      let result: any = null;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseErr) {
+        console.error('Non-JSON server response:', responseText);
+        if (response.status === 504) {
+          throw new Error('Waktu tunggu server Vercel habis (504 Timeout). Silakan gunakan foto yang lebih terkompresi atau coba lagi.');
+        }
+        if (response.status >= 500) {
+          throw new Error(`Server Vercel belum siap atau mengalami kendala (${response.status}). Silakan coba beberapa detik lagi.`);
+        }
+        throw new Error(`Gagal memproses respon server: ${responseText.slice(0, 80)}`);
+      }
 
-      if (!response.ok || result.status !== 'success') {
-        throw new Error(result.message || 'Gagal memproses analisis gambar.');
+      if (!response.ok || result?.status !== 'success') {
+        throw new Error(result?.message || 'Gagal memproses analisis gambar.');
       }
 
       const record: AnalysisRecord = result.data;
