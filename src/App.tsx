@@ -85,27 +85,51 @@ export default function App() {
     setNotification(null);
 
     try {
-      const formData = new FormData();
-      if (typeof payload.blobOrBase64 === 'string') {
-        formData.append('image', payload.blobOrBase64);
+      // Siapkan payload Base64 (paling stabil & kompatibel 100% dengan Vercel Serverless Function)
+      let imageBase64: string = '';
+      if (typeof payload.blobOrBase64 === 'string' && payload.blobOrBase64.startsWith('data:')) {
+        imageBase64 = payload.blobOrBase64;
+      } else if (payload.previewUrl && payload.previewUrl.startsWith('data:')) {
+        imageBase64 = payload.previewUrl;
+      } else if (payload.blobOrBase64 instanceof Blob) {
+        imageBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(payload.blobOrBase64 as Blob);
+        });
+      }
+
+      let response: Response;
+      if (imageBase64) {
+        response = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            image: imageBase64,
+            jenis_tanaman: payload.crop || '',
+            latitude: payload.latitude || null,
+            longitude: payload.longitude || null,
+          }),
+        });
       } else {
-        formData.append('image', payload.blobOrBase64, payload.fileName || 'upload.jpg');
-      }
+        const formData = new FormData();
+        if (typeof payload.blobOrBase64 === 'string') {
+          formData.append('image', payload.blobOrBase64);
+        } else {
+          formData.append('image', payload.blobOrBase64, payload.fileName || 'upload.jpg');
+        }
+        if (payload.crop) formData.append('jenis_tanaman', payload.crop);
+        if (payload.latitude) formData.append('latitude', payload.latitude.toString());
+        if (payload.longitude) formData.append('longitude', payload.longitude.toString());
 
-      if (payload.crop) {
-        formData.append('jenis_tanaman', payload.crop);
+        response = await fetch('/api/analyze', {
+          method: 'POST',
+          body: formData,
+        });
       }
-      if (payload.latitude) {
-        formData.append('latitude', payload.latitude.toString());
-      }
-      if (payload.longitude) {
-        formData.append('longitude', payload.longitude.toString());
-      }
-
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        body: formData,
-      });
 
       const responseText = await response.text();
       let result: any = null;

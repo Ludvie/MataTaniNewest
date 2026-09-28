@@ -1,5 +1,13 @@
 import app from '../server';
 
+// Menonaktifkan bodyParser bawaan Vercel agar Express menangani stream request dan body secara native
+export const config = {
+  api: {
+    bodyParser: false,
+    externalResolver: true,
+  },
+};
+
 export default function handler(req: any, res: any) {
   try {
     return app(req, res);

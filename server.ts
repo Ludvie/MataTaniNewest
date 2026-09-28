@@ -461,25 +461,30 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'Agri-Vision Backend' });
 });
 
-// 2. POST /api/analyze & /api/predict — Main analysis endpoint with robust Multer error handling
+// 2. POST /api/analyze & /api/predict — Main analysis endpoint with robust Multer & JSON handling
 app.post(
   ['/api/analyze', '/api/predict'],
   (req: any, res: any, next: any) => {
-    upload.single('image')(req, res, (err: any) => {
-      if (err) {
-        if (err.code === 'LIMIT_FILE_SIZE') {
+    const contentType = String(req.headers['content-type'] || '').toLowerCase();
+    if (contentType.includes('multipart/form-data')) {
+      upload.single('image')(req, res, (err: any) => {
+        if (err) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+              status: 'error',
+              message: 'Ukuran file gambar melebihi batas maksimum 10MB. Harap gunakan foto dengan resolusi lebih kecil atau terkompresi.',
+            });
+          }
           return res.status(400).json({
             status: 'error',
-            message: 'Ukuran file gambar melebihi batas maksimum 10MB. Harap gunakan foto dengan resolusi lebih kecil atau terkompresi.',
+            message: err.message || 'Gagal memproses unggahan berkas gambar.',
           });
         }
-        return res.status(400).json({
-          status: 'error',
-          message: err.message || 'Gagal memproses unggahan berkas gambar.',
-        });
-      }
+        next();
+      });
+    } else {
       next();
-    });
+    }
   },
   async (req: any, res: any) => {
     try {
