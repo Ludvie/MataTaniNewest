@@ -1,5 +1,6 @@
-import app from '../server';
+import app from './_app.ts';
 
+// Menonaktifkan bodyParser bawaan Vercel agar Express menangani stream request dan body secara native
 export const config = {
   api: {
     bodyParser: false,
