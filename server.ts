@@ -14,8 +14,13 @@ const PORT = 3000;
 
 // Setup directories
 const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+} catch (err) {
+  // Read-only filesystem in Vercel/serverless environments
+  console.log('[Agri-Vision] Running in read-only environment, filesystem uploads dir disabled.');
 }
 
 // Multer memory storage for fast hashing and processing
@@ -26,12 +31,25 @@ const upload = multer({
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
+// Middleware untuk normalisasi request path jika di-rewrite oleh Vercel Serverless Function
+app.use((req, _res, next) => {
+  // Jika Vercel me-rewrite /api/xxx ke serverless function tanpa prefix /api
+  if (!req.url.startsWith('/api') && !req.url.startsWith('/uploads') && !req.url.startsWith('/assets') && !req.url.startsWith('/@')) {
+    const knownApiPaths = ['predict', 'history', 'weather', 'feedback', 'export', 'health'];
+    if (knownApiPaths.some(p => req.url.includes(p))) {
+      req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+    }
+  }
+  next();
+});
+
 // Static uploads serving
 app.use('/uploads', express.static(uploadsDir));
 app.use('/static/uploads', express.static(uploadsDir));
 
-// Database file persistence simulation
+// Database file persistence simulation (dengan In-Memory Fallback untuk serverless / Vercel)
 const DB_FILE = path.join(process.cwd(), 'agrivision_data.json');
+let inMemoryStore: StoreData | null = null;
 
 interface AnalysisItem {
   id: number;
@@ -70,12 +88,16 @@ interface StoreData {
 }
 
 function loadData(): StoreData {
+  if (inMemoryStore) {
+    return inMemoryStore;
+  }
   if (fs.existsSync(DB_FILE)) {
     try {
       const raw = fs.readFileSync(DB_FILE, 'utf-8');
-      return JSON.parse(raw);
+      inMemoryStore = JSON.parse(raw);
+      return inMemoryStore!;
     } catch {
-      return { analyses: [], feedbacks: [] };
+      // Fallback
     }
   }
   // Initial seed data if empty
@@ -126,15 +148,17 @@ function loadData(): StoreData {
     ],
     feedbacks: []
   };
+  inMemoryStore = initialData;
   saveData(initialData);
   return initialData;
 }
 
 function saveData(data: StoreData) {
+  inMemoryStore = data;
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
   } catch (err) {
-    console.error('Error saving database data:', err);
+    // In serverless / read-only filesystem environments (e.g. Vercel), disk writes are skipped silently
   }
 }
 
@@ -526,15 +550,21 @@ app.post(
         });
       }
 
-      // Simpan gambar ke disk
-      const ext = mimeType.split('/')[1] || 'jpg';
-      const filename = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}.${ext}`;
-      const savedPath = path.join(uploadsDir, filename);
-      fs.writeFileSync(savedPath, imageBuffer);
-      const publicImageUrl = `/uploads/${filename}`;
+      // Simpan gambar ke disk dengan fallback Data URL (mencegah error read-only filesystem di Vercel Serverless)
+      let publicImageUrl = `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
+      try {
+        const ext = mimeType.split('/')[1] || 'jpg';
+        const filename = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}.${ext}`;
+        const savedPath = path.join(uploadsDir, filename);
+        fs.writeFileSync(savedPath, imageBuffer);
+        publicImageUrl = `/uploads/${filename}`;
+      } catch (err) {
+        // Pada Vercel / serverless lambda, disk berstatus read-only. Data URL base64 digunakan secara seamless.
+        console.log('[Agri-Vision] File write disk dilewati (mode serverless Vercel), menggunakan Data URL base64.');
+      }
 
       // Panggil Gemini Vision API dengan model resmi
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
       let aiOutput: any = null;
 
       if (apiKey) {
@@ -1222,4 +1252,10 @@ async function startServer() {
   });
 }
 
-startServer();
+// Hanya jalankan listener mandiri di lingkungan non-serverless (Local dev / Container / AI Studio)
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
+  startServer();
+}
+
+export default app;
+export { app };
